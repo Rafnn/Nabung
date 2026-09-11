@@ -7,6 +7,19 @@ from datetime import datetime
 import time
 
 app = FastAPI()
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware  # Import ini
+
+app = FastAPI()
+
+# Izinkan akses dari GitHub Pages / mana saja
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Izinkan Frontend berkomunikasi dengan Backend (CORS)
 app.add_middleware(
