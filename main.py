@@ -83,7 +83,7 @@ class WishlistReq(BaseModel):
 # API Endpoints
 @app.post("/api/login")
 def login(req: LoginReq):
-    if req.password == "1234":
+    if req.password == "2109":
         return {"status": "success"}
     raise HTTPException(status_code=400, detail="Password salah")
 
