@@ -7,12 +7,8 @@ from datetime import datetime
 import time
 
 app = FastAPI()
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware  # Import ini
 
-app = FastAPI()
-
-# Izinkan akses dari GitHub Pages / mana saja
+# Konfigurasi CORS agar frontend GitHub Pages bisa terhubung
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,18 +17,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Izinkan Frontend berkomunikasi dengan Backend (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Simpan DB di folder /tmp agar tidak diblokir oleh Vercel
+DB_PATH = "/tmp/duosave.db"
 
-# Inisialisasi Database SQLite Bawaan Python
 def init_db():
-    conn = sqlite3.connect("duosave.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS state (
@@ -58,10 +47,9 @@ def init_db():
         conn.commit()
     conn.close()
 
-init_db()
-
 def get_state():
-    conn = sqlite3.connect("duosave.db")
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT data FROM state WHERE id = 1")
     row = cursor.fetchone()
@@ -69,7 +57,7 @@ def get_state():
     return json.loads(row[0])
 
 def save_state(state):
-    conn = sqlite3.connect("duosave.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("UPDATE state SET data = ? WHERE id = 1", (json.dumps(state),))
     conn.commit()
