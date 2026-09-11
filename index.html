@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DuoSave — Target Nabung (Python Powered)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF9F5; --card:#FFFFFF; --line:#EFEAE1; --ink:#2B2521;
+    --ink-soft:#6F6459; --taupe:#8A7F72; --rafly:#3B5249; --rafly-soft:#DCE5DF;
+    --salfa:#A9742F; --salfa-soft:#F1E3CB;
+  }
+  html{font-family:'Inter',sans-serif;}
+  body{
+    background-color:var(--paper); color:var(--ink);
+    background-image: radial-gradient(rgba(43,37,33,0.018) 1px, transparent 1px);
+    background-size:3px 3px;
+  }
+  .font-serif{font-family:'Source Serif 4',serif;}
+  .card{background:var(--card); border:1px solid var(--line); box-shadow:0 1px 2px rgba(43,37,33,0.04), 0 1px 12px rgba(43,37,33,0.03);}
+  .avatar{display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;border:1.5px solid var(--line);}
+  .progress-track{background:#F2EEE6;border:1px solid var(--line);}
+  @media (prefers-reduced-motion: no-preference){ .fade-in{animation:fadeIn .4s ease-out both;} }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- LOGIN SCREEN -->
+<div id="loginView" class="min-h-screen flex items-center justify-center p-6">
+  <div class="card rounded-2xl p-8 max-w-md w-full fade-in">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--ink);">
+        <i data-lucide="wallet" class="w-5 h-5" style="color:var(--paper);"></i>
+      </div>
+      <span class="font-serif text-2xl tracking-tight">DuoSave</span>
+    </div>
+    <h2 class="font-serif text-xl text-center mb-1">Selamat Datang</h2>
+    <p class="text-sm text-[var(--taupe)] text-center mb-6">Pilih profil & masukkan kata sandi</p>
+
+    <form onsubmit="handleLogin(event)" class="space-y-5">
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-2 font-medium">Profil</label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="cursor-pointer">
+            <input type="radio" name="userSelect" value="Rafly" class="peer hidden" checked>
+            <div class="card rounded-xl p-3 flex items-center gap-3 border-2 peer-checked:border-[var(--ink)] peer-checked:bg-[#FAF8F3]">
+              <div class="avatar w-8 h-8 rounded-full text-xs" style="background:var(--rafly-soft); color:var(--rafly);">R</div>
+              <span class="text-sm font-medium">Rafly</span>
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="userSelect" value="Salfa" class="peer hidden">
+            <div class="card rounded-xl p-3 flex items-center gap-3 border-2 peer-checked:border-[var(--ink)] peer-checked:bg-[#FAF8F3]">
+              <div class="avatar w-8 h-8 rounded-full text-xs" style="background:var(--salfa-soft); color:var(--salfa);">S</div>
+              <span class="text-sm font-medium">Salfa</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1.5 font-medium">Password</label>
+        <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] focus:outline-none text-sm">
+        <p class="text-[11px] text-[var(--taupe)] mt-1">*Password demo: <code class="bg-gray-100 px-1 rounded">1234</code></p>
+      </div>
+      <p id="loginError" class="text-xs text-red-600 hidden text-center">Password salah!</p>
+      <button type="submit" class="w-full py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--ink);">Masuk ke DuoSave</button>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardView" class="hidden max-w-5xl mx-auto px-6 md:px-8 py-8">
+  <header class="flex items-center justify-between mb-10 fade-in">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:var(--ink);">
+        <i data-lucide="wallet" class="w-4 h-4" style="color:var(--paper);"></i>
+      </div>
+      <span class="font-serif text-xl tracking-tight">DuoSave</span>
+    </div>
+    <div class="flex items-center gap-5">
+      <div class="hidden sm:flex items-center gap-2 text-sm text-[var(--ink-soft)]">
+        <i data-lucide="flame" class="w-4 h-4" style="color:var(--salfa);"></i>
+        <span>Terhubung ke Server Python</span>
+      </div>
+      <div class="flex items-center gap-3 pl-3 border-l border-[var(--line)]">
+        <div class="flex items-center -space-x-2">
+          <div class="avatar w-9 h-9 rounded-full text-sm" style="background:var(--rafly-soft); color:var(--rafly);">R</div>
+          <div class="avatar w-9 h-9 rounded-full text-sm" style="background:var(--salfa-soft); color:var(--salfa);">S</div>
+        </div>
+        <button onclick="handleLogout()" class="text-xs text-[var(--taupe)] hover:text-[var(--ink)] underline">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Target Card -->
+  <section class="card rounded-2xl p-7 md:p-9 mb-8 fade-in">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+      <div>
+        <p class="text-sm text-[var(--taupe)] mb-1">Target Bersama</p>
+        <h1 class="font-serif text-3xl md:text-4xl">Nabung</h1>
+      </div>
+      <div class="flex flex-wrap items-end gap-6 sm:gap-8">
+        <div>
+          <p class="text-sm text-[var(--taupe)] mb-1">Terkumpul</p>
+          <p id="totalSaved" class="font-serif text-2xl">Rp 0</p>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm text-[var(--taupe)]">Target</span>
+            <button onclick="openTargetModal()" class="text-xs text-[var(--taupe)] hover:text-[var(--ink)] flex items-center gap-1 underline">
+              <i data-lucide="pencil" class="w-3 h-3"></i> Setting
+            </button>
+          </div>
+          <p id="targetGoalText" class="font-serif text-2xl">Rp 0</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openTransModal('setor')" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--ink);">
+            <i data-lucide="plus" class="w-4 h-4"></i> Setor
+          </button>
+          <button onclick="openTransModal('tarik')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium border border-[var(--line)] text-red-700 bg-red-50/50">
+            <i data-lucide="minus" class="w-4 h-4"></i> Tarik
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <div class="progress-track rounded-full h-3.5 overflow-hidden flex">
+        <div id="barRafly" class="h-full transition-all duration-500" style="width:0%; background:var(--rafly);"></div>
+        <div id="barSalfa" class="h-full transition-all duration-500" style="width:0%; background:var(--salfa);"></div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 mt-3 text-sm">
+        <div class="flex items-center gap-5">
+          <span class="flex items-center gap-1.5 text-[var(--ink-soft)]">
+            <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:var(--rafly);"></span>
+            Rafly — <span id="textRafly">Rp 0 (0%)</span>
+          </span>
+          <span class="flex items-center gap-1.5 text-[var(--ink-soft)]">
+            <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:var(--salfa);"></span>
+            Salfa — <span id="textSalfa">Rp 0 (0%)</span>
+          </span>
+        </div>
+        <span id="targetPct" class="text-[var(--taupe)]">0% dari target tercapai</span>
+      </div>
+    </div>
+
+    <div id="deadlineEstimateBox" class="p-4 rounded-xl border border-[var(--line)] bg-[#FAF8F3] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:var(--salfa-soft); color:var(--salfa);">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <p class="font-medium text-[var(--ink)]">
+            Tenggat Waktu: <span id="deadlineText" class="font-serif font-bold">31 Des 2026</span> 
+            <span id="monthsLeftBadge" class="ml-2 text-xs font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-800"></span>
+          </p>
+          <p id="estimateText" class="text-xs text-[var(--ink-soft)] mt-0.5"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Grid Main -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Aktivitas -->
+      <section class="card rounded-2xl p-6 md:p-7 fade-in">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-serif text-lg">Aktivitas Transaksi</h3>
+          <button onclick="resetData()" class="text-xs text-[var(--taupe)] hover:text-red-600">Reset Data Server</button>
+        </div>
+        <ul id="activityList" class="divide-y divide-[var(--line)]"></ul>
+      </section>
+
+      <!-- Wishlist Impian -->
+      <section class="card rounded-2xl p-6 md:p-7 fade-in">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="font-serif text-lg">Wishlist Impian 🛍️</h3>
+            <p class="text-xs text-[var(--taupe)] mt-0.5">Barang yang ingin dibeli dari hasil tabungan</p>
+          </div>
+          <button onclick="openWishlistModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white" style="background:var(--ink);">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Wishlist
+          </button>
+        </div>
+        <div id="wishlistList" class="space-y-3"></div>
+      </section>
+    </div>
+
+    <!-- Right Column -->
+    <aside class="fade-in">
+      <div class="card rounded-2xl p-6 md:p-7 sticky top-8">
+        <h3 class="font-serif text-lg mb-1">Terkumpul Bulan Ini</h3>
+        <p class="text-sm text-[var(--taupe)] mb-6">Total bersih kontribusi kalian</p>
+        <p id="totalMonthlySaved" class="font-serif text-3xl mb-6">Rp 0</p>
+        <div class="space-y-5">
+          <div>
+            <div class="flex items-center justify-between text-sm mb-2">
+              <span class="flex items-center gap-2">
+                <span class="avatar w-6 h-6 rounded-full text-[11px]" style="background:var(--rafly-soft); color:var(--rafly);">R</span> Rafly
+              </span>
+              <span id="raflyMonthlyText" class="font-serif">Rp 0</span>
+            </div>
+            <div class="progress-track rounded-full h-2 overflow-hidden">
+              <div id="raflyMonthlyBar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--rafly);"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-sm mb-2">
+              <span class="flex items-center gap-2">
+                <span class="avatar w-6 h-6 rounded-full text-[11px]" style="background:var(--salfa-soft); color:var(--salfa);">S</span> Salfa
+              </span>
+              <span id="salfaMonthlyText" class="font-serif">Rp 0</span>
+            </div>
+            <div class="progress-track rounded-full h-2 overflow-hidden">
+              <div id="salfaMonthlyBar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--salfa);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- TARGET MODAL -->
+<div id="targetModal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="card rounded-2xl p-6 md:p-8 max-w-md w-full fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-serif text-xl">Setting Target Tabungan</h3>
+      <button onclick="closeTargetModal()" class="text-[var(--taupe)]"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form onsubmit="handleTargetSubmit(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1">Nominal Target Baru (Rp)</label>
+        <input type="number" id="modalTargetAmount" required class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-sm font-serif text-lg">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1">Tenggat Waktu</label>
+        <input type="date" id="modalTargetDeadline" required class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-sm">
+      </div>
+      <div class="flex justify-end gap-3 pt-4">
+        <button type="button" onclick="closeTargetModal()" class="px-4 py-2 rounded-lg text-sm">Batal</button>
+        <button type="submit" class="px-5 py-2 rounded-lg text-sm text-white" style="background:var(--ink);">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TRANSAKSI MODAL -->
+<div id="transModal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="card rounded-2xl p-6 md:p-8 max-w-md w-full fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-serif text-xl">Catat Transaksi</h3>
+      <button onclick="closeTransModal()" class="text-[var(--taupe)]"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#F2EEE6] mb-5 text-sm font-medium">
+      <button type="button" id="tabSetor" onclick="switchTransTab('setor')" class="py-2 rounded-lg">+ Setor</button>
+      <button type="button" id="tabTarik" onclick="switchTransTab('tarik')" class="py-2 rounded-lg">- Tarik</button>
+    </div>
+    <form onsubmit="handleTransSubmit(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1">Penabung / Pemohon</label>
+        <select id="modalTransUser" class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-sm">
+          <option value="Rafly">Rafly</option>
+          <option value="Salfa">Salfa</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1">Nominal (Rp)</label>
+        <input type="number" id="modalTransAmount" min="1000" step="1000" required class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-sm font-serif text-lg">
+        <div class="flex flex-wrap gap-1.5 mt-2.5">
+          <button type="button" onclick="addQuickAmount(50000)" class="px-2.5 py-1 rounded-md text-xs border border-[var(--line)] bg-[#FAF8F3]">+50 rb</button>
+          <button type="button" onclick="addQuickAmount(100000)" class="px-2.5 py-1 rounded-md text-xs border border-[var(--line)] bg-[#FAF8F3]">+100 rb</button>
+          <button type="button" onclick="addQuickAmount(250000)" class="px-2.5 py-1 rounded-md text-xs border border-[var(--line)] bg-[#FAF8F3]">+250 rb</button>
+          <button type="button" onclick="addQuickAmount(500000)" class="px-2.5 py-1 rounded-md text-xs border border-[var(--line)] bg-[#FAF8F3]">+500 rb</button>
+          <button type="button" onclick="addQuickAmount(1000000)" class="px-2.5 py-1 rounded-md text-xs border border-[var(--line)] bg-[#FAF8F3]">+1 jt</button>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-4">
+        <button type="button" onclick="closeTransModal()" class="px-4 py-2 rounded-lg text-sm">Batal</button>
+        <button type="submit" id="btnTransSubmit" class="px-5 py-2 rounded-lg text-sm text-white" style="background:var(--ink);">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- WISHLIST MODAL -->
+<div id="wishlistModal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="card rounded-2xl p-6 md:p-8 max-w-md w-full fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-serif text-xl">Tambah Wishlist</h3>
+      <button onclick="closeWishlistModal()" class="text-[var(--taupe)]"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form onsubmit="handleWishlistSubmit(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1">Nama Barang</label>
+        <input type="text" id="modalWishlistName" required class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-sm">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1">Estimasi Harga (Rp)</label>
+        <input type="number" id="modalWishlistPrice" min="1000" step="1000" required class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-sm font-serif text-lg">
+      </div>
+      <div class="flex justify-end gap-3 pt-4">
+        <button type="button" onclick="closeWishlistModal()" class="px-4 py-2 rounded-lg text-sm">Batal</button>
+        <button type="submit" class="px-5 py-2 rounded-lg text-sm text-white" style="background:var(--ink);">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API_URL = "http://localhost:8000/api";
+  let state = {};
+  let currentUser = localStorage.getItem('duosave_user') || null;
+  let activeTransType = 'setor';
+
+  function formatRupiah(amt) { return 'Rp ' + (amt || 0).toLocaleString('id-ID'); }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    if (currentUser) { showDashboard(); } else { showLogin(); }
+  });
+
+  async function loadStateFromServer() {
+    try {
+      const res = await fetch(`${API_URL}/state`);
+      state = await res.json();
+      renderData();
+    } catch (err) {
+      alert("Gagal terhubung ke Server Python. Pastikan uvicorn sudah dinyalakan!");
+    }
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const password = document.getElementById('loginPassword').value;
+    const selectedUser = document.querySelector('input[name="userSelect"]:checked').value;
+
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      if (res.ok) {
+        currentUser = selectedUser;
+        localStorage.setItem('duosave_user', currentUser);
+        showDashboard();
+      } else {
+        document.getElementById('loginError').classList.remove('hidden');
+      }
+    } catch (err) {
+      alert("Gagal terhubung ke server Python.");
+    }
+  }
+
+  function handleLogout() {
+    currentUser = null;
+    localStorage.removeItem('duosave_user');
+    showLogin();
+  }
+
+  function showLogin() {
+    document.getElementById('loginView').classList.remove('hidden');
+    document.getElementById('dashboardView').classList.add('hidden');
+  }
+
+  function showDashboard() {
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('dashboardView').classList.remove('hidden');
+    loadStateFromServer();
+  }
+
+  function renderData() {
+    if (!state.nabung) return;
+    const totalNabung = Math.max(0, state.nabung.rafly + state.nabung.salfa);
+    const goal = state.nabung.goal;
+    
+    document.getElementById('totalSaved').textContent = formatRupiah(totalNabung);
+    document.getElementById('targetGoalText').textContent = formatRupiah(goal);
+
+    const raflyPct = goal > 0 ? (Math.max(0, state.nabung.rafly) / goal) * 100 : 0;
+    const salfaPct = goal > 0 ? (Math.max(0, state.nabung.salfa) / goal) * 100 : 0;
+    document.getElementById('barRafly').style.width = `${raflyPct}%`;
+    document.getElementById('barSalfa').style.width = `${salfaPct}%`;
+
+    document.getElementById('textRafly').textContent = `${formatRupiah(state.nabung.rafly)}`;
+    document.getElementById('textSalfa').textContent = `${formatRupiah(state.nabung.salfa)}`;
+    document.getElementById('targetPct').textContent = `${Math.min(100, Math.round((totalNabung/goal)*100))}% dari target tercapai`;
+
+    // Deadline Calculation
+    const targetDate = new Date(state.nabung.deadline);
+    const now = new Date();
+    let monthsLeft = (targetDate.getFullYear() - now.getFullYear()) * 12 + (targetDate.getMonth() - now.getMonth());
+    if (monthsLeft < 1) monthsLeft = 1;
+    const remaining = Math.max(0, goal - totalNabung);
+    const monthlyTotal = Math.ceil(remaining / monthsLeft);
+
+    document.getElementById('deadlineText').textContent = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('monthsLeftBadge').textContent = `${monthsLeft} bulan lagi`;
+    document.getElementById('estimateText').innerHTML = remaining === 0 
+      ? `🎉 Target tabungan sudah tercapai penuh!`
+      : `💡 Perlu tabung <b class="text-[var(--ink)]">${formatRupiah(monthlyTotal)}/bulan</b> agar selesai tepat waktu.`;
+
+    // Monthly
+    const totalMonthly = state.monthly.rafly + state.monthly.salfa;
+    document.getElementById('totalMonthlySaved').textContent = formatRupiah(totalMonthly);
+    document.getElementById('raflyMonthlyText').textContent = formatRupiah(state.monthly.rafly);
+    document.getElementById('salfaMonthlyText').textContent = formatRupiah(state.monthly.salfa);
+
+    // Activities
+    const feedEl = document.getElementById('activityList');
+    feedEl.innerHTML = state.activities.length === 0 
+      ? `<li class="py-6 text-center text-sm text-[var(--taupe)]">Belum ada aktivitas.</li>`
+      : state.activities.map(act => {
+          const isTarik = act.type === 'tarik';
+          return `
+            <li class="flex items-center justify-between py-3.5 fade-in">
+              <div>
+                <p class="text-sm font-medium">${act.user} <span class="font-normal text-[var(--ink-soft)]">${isTarik ? 'menarik dana' : 'memasukkan tabungan'}</span></p>
+                <p class="text-[11px] text-[var(--taupe)]">${act.time}</p>
+              </div>
+              <span class="font-serif text-sm font-semibold ${isTarik ? 'text-red-600' : 'text-emerald-700'}">${isTarik ? '-' : '+'}${formatRupiah(act.amount)}</span>
+            </li>
+          `;
+        }).join('');
+
+    // Wishlist
+    const listEl = document.getElementById('wishlistList');
+    listEl.innerHTML = state.wishlist.length === 0
+      ? `<p class="text-sm text-[var(--taupe)] text-center py-4">Belum ada wishlist.</p>`
+      : state.wishlist.map(w => {
+          const isEnough = totalNabung >= w.price;
+          return `
+            <div class="p-4 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between">
+              <div>
+                <h4 class="font-medium text-sm">${w.name}</h4>
+                <p class="font-serif text-sm text-[var(--ink-soft)]">${formatRupiah(w.price)}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-0.5 rounded-full ${isEnough ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                  ${isEnough ? 'Uang Cukup! 🎉' : 'Kurang ' + formatRupiah(w.price - totalNabung)}
+                </span>
+                <button onclick="deleteWishlist(${w.id})" class="text-[var(--taupe)] hover:text-red-600 p-1">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+    lucide.createIcons();
+  }
+
+  // API Call Handlers
+  async function handleTargetSubmit(e) {
+    e.preventDefault();
+    const goal = parseInt(document.getElementById('modalTargetAmount').value, 10);
+    const deadline = document.getElementById('modalTargetDeadline').value;
+    const res = await fetch(`${API_URL}/target`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal, deadline })
+    });
+    state = await res.json();
+    renderData();
+    closeTargetModal();
+  }
+
+  async function handleTransSubmit(e) {
+    e.preventDefault();
+    const user = document.getElementById('modalTransUser').value;
+    const amount = parseInt(document.getElementById('modalTransAmount').value, 10);
+    const res = await fetch(`${API_URL}/transaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: activeTransType, user, amount })
+    });
+    if (res.ok) {
+      state = await res.json();
+      renderData();
+      closeTransModal();
+    } else {
+      const err = await res.json();
+      alert(err.detail);
+    }
+  }
+
+  async function handleWishlistSubmit(e) {
+    e.preventDefault();
+    const name = document.getElementById('modalWishlistName').value.trim();
+    const price = parseInt(document.getElementById('modalWishlistPrice').value, 10);
+    const res = await fetch(`${API_URL}/wishlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, price })
+    });
+    state = await res.json();
+    renderData();
+    closeWishlistModal();
+  }
+
+  async function deleteWishlist(id) {
+    if (confirm('Hapus wishlist ini?')) {
+      const res = await fetch(`${API_URL}/wishlist/${id}`, { method: 'DELETE' });
+      state = await res.json();
+      renderData();
+    }
+  }
+
+  async function resetData() {
+    if (confirm('Reset ulang data di server ke 0?')) {
+      const res = await fetch(`${API_URL}/reset`, { method: 'POST' });
+      state = await res.json();
+      renderData();
+    }
+  }
+
+  // UI Helpers
+  function openTargetModal() {
+    document.getElementById('modalTargetAmount').value = state.nabung.goal;
+    document.getElementById('modalTargetDeadline').value = state.nabung.deadline;
+    document.getElementById('targetModal').classList.remove('hidden');
+  }
+  function closeTargetModal() { document.getElementById('targetModal').classList.add('hidden'); }
+  function openTransModal(type) {
+    document.getElementById('modalTransUser').value = currentUser || 'Rafly';
+    document.getElementById('modalTransAmount').value = '';
+    switchTransTab(type);
+    document.getElementById('transModal').classList.remove('hidden');
+  }
+  function closeTransModal() { document.getElementById('transModal').classList.add('hidden'); }
+  function switchTransTab(type) {
+    activeTransType = type;
+    document.getElementById('tabSetor').className = type === 'setor' ? 'py-2 rounded-lg bg-white shadow-sm font-semibold' : 'py-2 rounded-lg text-[var(--taupe)]';
+    document.getElementById('tabTarik').className = type === 'tarik' ? 'py-2 rounded-lg bg-white shadow-sm font-semibold text-red-600' : 'py-2 rounded-lg text-[var(--taupe)]';
+  }
+  function openWishlistModal() {
+    document.getElementById('modalWishlistName').value = '';
+    document.getElementById('modalWishlistPrice').value = '';
+    document.getElementById('wishlistModal').classList.remove('hidden');
+  }
+  function closeWishlistModal() { document.getElementById('wishlistModal').classList.add('hidden'); }
+  function addQuickAmount(amt) {
+    const el = document.getElementById('modalTransAmount');
+    el.value = (parseInt(el.value, 10) || 0) + amt;
+  }
+</script>
+</body>
+</html>
