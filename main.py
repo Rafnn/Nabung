@@ -5,7 +5,7 @@ from supabase import create_client, Client
 
 app = FastAPI(title="DuoSave API")
 
-# Konfigurasi CORS agar frontend (rafnn.github.io) bisa mengakses backend Vercel tanpa terhalang
+# Konfigurasi CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,6 +13,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Password aplikasi (Bisa kamu ubah sendiri di sini atau dari Vercel Environment Variable "APP_PASSWORD")
+APP_PASSWORD = os.getenv("APP_PASSWORD", "2109").strip()
 
 # Inisialisasi Supabase secara aman
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
@@ -32,6 +35,22 @@ def read_root():
     return {"status": "online", "message": "Backend DuoSave FastAPI berjalan lancar!"}
 
 
+@app.post("/api/login")
+async def login(request: Request):
+    try:
+        body = await request.json()
+        user_password = body.get("password", "")
+        
+        if user_password == APP_PASSWORD:
+            return {"status": "success", "message": "Login berhasil"}
+        else:
+            raise HTTPException(status_code=401, detail="Password salah!")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Request tidak valid: {str(e)}")
+
+
 @app.get("/api/state")
 def get_state():
     if not supabase:
@@ -41,7 +60,6 @@ def get_state():
         }
     
     try:
-        # Mengambil data dari tabel 'state' dengan id = 1
         response = supabase.table("state").select("*").eq("id", 1).execute()
         if response.data and len(response.data) > 0:
             return response.data[0].get("data", {})
@@ -58,7 +76,6 @@ async def save_state(request: Request):
     
     try:
         body = await request.json()
-        # Menyimpan atau memperbarui data di tabel 'state' dengan id = 1
         response = supabase.table("state").upsert({"id": 1, "data": body}).execute()
         return {"status": "success", "data": response.data}
     except Exception as e:
