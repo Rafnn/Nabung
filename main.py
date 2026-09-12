@@ -26,7 +26,20 @@ if SUPABASE_URL and SUPABASE_KEY:
     except Exception as e:
         print(f"Error koneksi Supabase: {e}")
         supabase = None
-
+        
+@app.get("/api/state")
+def get_state():
+    if not supabase:
+        return {"status": "error", "message": "Supabase belum terhubung. Cek Environment Variables di Vercel."}
+    
+    try:
+        response = supabase.table("app_state").select("*").eq("id", 1).execute()
+        if response.data:
+            return response.data[0]["data"]
+        return {}
+    except Exception as e:
+        return {"status": "error", "message": f"Gagal mengambil data: {str(e)}"}
+    
 DEFAULT_STATE = {
     "nabung": {
         "goal": 10000000,
