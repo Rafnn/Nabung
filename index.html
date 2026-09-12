@@ -524,11 +524,18 @@
   }
 
   // UI Helpers
-  function openTargetModal() {
-    document.getElementById('modalTargetAmount').value = state.nabung.goal;
-    document.getElementById('modalTargetDeadline').value = state.nabung.deadline;
-    document.getElementById('targetModal').classList.remove('hidden');
-  }
+ function openTargetModal() {
+  const goal = (state && state.nabung && state.nabung.goal) ? state.nabung.goal : 10000000;
+  const deadline = (state && state.nabung && state.nabung.deadline) ? state.nabung.deadline : '';
+  
+  const inputAmount = document.getElementById('modalTargetAmount');
+  const inputDeadline = document.getElementById('modalTargetDeadline');
+  const modal = document.getElementById('targetModal');
+
+  if (inputAmount) inputAmount.value = goal;
+  if (inputDeadline) inputDeadline.value = deadline;
+  if (modal) modal.classList.remove('hidden');
+}
   function closeTargetModal() { document.getElementById('targetModal').classList.add('hidden'); }
   function openTransModal(type) {
     document.getElementById('modalTransUser').value = currentUser || 'Rafly';
