@@ -1,14 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sqlite3
-import json
+from supabase import create_client, Client
+import os
 from datetime import datetime
 import time
 
 app = FastAPI()
 
-# Konfigurasi CORS agar frontend GitHub Pages bisa terhubung
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,53 +16,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Simpan DB di folder /tmp agar tidak diblokir oleh Vercel
-DB_PATH = "/tmp/duosave.db"
+# Mengambil konfigurasi dari Vercel
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS state (
-            id INTEGER PRIMARY KEY,
-            data TEXT
-        )
-    ''')
-    cursor.execute("SELECT data FROM state WHERE id = 1")
-    row = cursor.fetchone()
-    if not row:
-        default_state = {
-            "nabung": {
-                "goal": 10000000,
-                "deadline": "2026-12-31",
-                "rafly": 0,
-                "salfa": 0
-            },
-            "monthly": {"rafly": 0, "salfa": 0},
-            "activities": [],
-            "wishlist": []
-        }
-        cursor.execute("INSERT INTO state (id, data) VALUES (1, ?)", (json.dumps(default_state),))
-        conn.commit()
-    conn.close()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+
+DEFAULT_STATE = {
+    "nabung": {
+        "goal": 10000000,
+        "deadline": "2026-12-31",
+        "rafly": 0,
+        "salfa": 0
+    },
+    "monthly": {"rafly": 0, "salfa": 0},
+    "activities": [],
+    "wishlist": []
+}
 
 def get_state():
-    init_db()
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT data FROM state WHERE id = 1")
-    row = cursor.fetchone()
-    conn.close()
-    return json.loads(row[0])
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase belum terkonfigurasi")
+    try:
+        res = supabase.table("state").select("data").eq("id", 1).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["data"]
+        else:
+            save_state(DEFAULT_STATE)
+            return DEFAULT_STATE
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 def save_state(state):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE state SET data = ? WHERE id = 1", (json.dumps(state),))
-    conn.commit()
-    conn.close()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase belum terkonfigurasi")
+    try:
+        supabase.table("state").upsert({"id": 1, "data": state}).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Schema Input Data
 class LoginReq(BaseModel):
     password: str
 
@@ -80,10 +71,9 @@ class WishlistReq(BaseModel):
     name: str
     price: int
 
-# API Endpoints
 @app.post("/api/login")
 def login(req: LoginReq):
-    if req.password == "2109":
+    if req.password == "210919":  # Ganti dengan password login kamu
         return {"status": "success"}
     raise HTTPException(status_code=400, detail="Password salah")
 
@@ -146,16 +136,5 @@ def delete_wishlist(item_id: int):
 
 @app.post("/api/reset")
 def reset_data():
-    default_state = {
-        "nabung": {
-            "goal": 10000000,
-            "deadline": "2026-12-31",
-            "rafly": 0,
-            "salfa": 0
-        },
-        "monthly": {"rafly": 0, "salfa": 0},
-        "activities": [],
-        "wishlist": []
-    }
-    save_state(default_state)
-    return default_state
+    save_state(DEFAULT_STATE)
+    return DEFAULT_STATE
