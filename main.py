@@ -14,8 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Password aplikasi (Bisa kamu ubah sendiri di sini atau dari Vercel Environment Variable "APP_PASSWORD")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "2109").strip()
+# Password aplikasi
+APP_PASSWORD = os.getenv("APP_PASSWORD", "duosave123").strip()
 
 # Inisialisasi Supabase secara aman
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
@@ -70,6 +70,7 @@ def get_state():
 
 @app.post("/api/save")
 @app.post("/api/state")
+@app.post("/api/target")
 async def save_state(request: Request):
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase belum terhubung.")
