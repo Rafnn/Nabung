@@ -66,9 +66,8 @@
       <div>
         <label class="block text-xs uppercase tracking-wider text-[var(--taupe)] mb-1.5 font-medium">Password</label>
         <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] focus:outline-none text-sm">
-        <p class="text-[11px] text-[var(--taupe)] mt-1">*Password: <code class="bg-gray-100 px-1 rounded">2109</code></p>
       </div>
-      <p id="loginError" class="text-xs text-red-600 hidden text-center">Password salah sayang</p>
+      <p id="loginError" class="text-xs text-red-600 hidden text-center">Password salah!</p>
       <button type="submit" class="w-full py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--ink);">Masuk ke DuoSave</button>
     </form>
   </div>
@@ -139,11 +138,11 @@
         <div class="flex items-center gap-5">
           <span class="flex items-center gap-1.5 text-[var(--ink-soft)]">
             <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:var(--rafly);"></span>
-            Rafly — <span id="textRafly">Rp 0 (0%)</span>
+            Rafly — <span id="textRafly">Rp 0</span>
           </span>
           <span class="flex items-center gap-1.5 text-[var(--ink-soft)]">
             <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:var(--salfa);"></span>
-            Salfa — <span id="textSalfa">Rp 0 (0%)</span>
+            Salfa — <span id="textSalfa">Rp 0</span>
           </span>
         </div>
         <span id="targetPct" class="text-[var(--taupe)]">0% dari target tercapai</span>
@@ -317,7 +316,12 @@
 <script>
   const API_URL = "https://nabungs.vercel.app/api";
   
-  let state = {};
+  let state = {
+    nabung: { goal: 10000000, rafly: 0, salfa: 0, deadline: '2026-12-31' },
+    monthly: { rafly: 0, salfa: 0 },
+    wishlist: [],
+    activities: []
+  };
   let currentUser = localStorage.getItem('duosave_user') || null;
   let activeTransType = 'setor';
 
@@ -331,11 +335,34 @@
   async function loadStateFromServer() {
     try {
       const res = await fetch(`${API_URL}/state`);
-      state = await res.json();
+      const data = await res.json();
+      if (data && Object.keys(data).length > 0) {
+        state = data;
+        if (!state.nabung) state.nabung = { goal: 10000000, rafly: 0, salfa: 0, deadline: '2026-12-31' };
+        if (!state.monthly) state.monthly = { rafly: 0, salfa: 0 };
+        if (!state.wishlist) state.wishlist = [];
+        if (!state.activities) state.activities = [];
+      }
       renderData();
     } catch (err) {
-      alert("Gagal terhubung ke Server Python. Pastikan uvicorn sudah dinyalakan!");
+      console.error(err);
+      alert("Gagal terhubung ke Server Python.");
     }
+  }
+
+  async function saveStateToServer() {
+    try {
+      const res = await fetch(`${API_URL}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      });
+      if (!res.ok) alert("Gagal menyimpan ke server");
+    } catch (err) {
+      console.error(err);
+      alert("Error koneksi server Python");
+    }
+    renderData();
   }
 
   async function handleLogin(e) {
@@ -380,23 +407,24 @@
 
   function renderData() {
     if (!state.nabung) return;
-    const totalNabung = Math.max(0, state.nabung.rafly + state.nabung.salfa);
-    const goal = state.nabung.goal;
+    const totalNabung = Math.max(0, (state.nabung.rafly || 0) + (state.nabung.salfa || 0));
+    const goal = state.nabung.goal || 10000000;
     
     document.getElementById('totalSaved').textContent = formatRupiah(totalNabung);
     document.getElementById('targetGoalText').textContent = formatRupiah(goal);
 
-    const raflyPct = goal > 0 ? (Math.max(0, state.nabung.rafly) / goal) * 100 : 0;
-    const salfaPct = goal > 0 ? (Math.max(0, state.nabung.salfa) / goal) * 100 : 0;
+    const raflyPct = goal > 0 ? (Math.max(0, state.nabung.rafly || 0) / goal) * 100 : 0;
+    const salfaPct = goal > 0 ? (Math.max(0, state.nabung.salfa || 0) / goal) * 100 : 0;
     document.getElementById('barRafly').style.width = `${raflyPct}%`;
     document.getElementById('barSalfa').style.width = `${salfaPct}%`;
 
-    document.getElementById('textRafly').textContent = `${formatRupiah(state.nabung.rafly)}`;
-    document.getElementById('textSalfa').textContent = `${formatRupiah(state.nabung.salfa)}`;
+    document.getElementById('textRafly').textContent = `${formatRupiah(state.nabung.rafly || 0)}`;
+    document.getElementById('textSalfa').textContent = `${formatRupiah(state.nabung.salfa || 0)}`;
     document.getElementById('targetPct').textContent = `${Math.min(100, Math.round((totalNabung/goal)*100))}% dari target tercapai`;
 
     // Deadline Calculation
-    const targetDate = new Date(state.nabung.deadline);
+    const deadlineStr = state.nabung.deadline || '2026-12-31';
+    const targetDate = new Date(deadlineStr);
     const now = new Date();
     let monthsLeft = (targetDate.getFullYear() - now.getFullYear()) * 12 + (targetDate.getMonth() - now.getMonth());
     if (monthsLeft < 1) monthsLeft = 1;
@@ -410,16 +438,23 @@
       : `💡 Perlu tabung <b class="text-[var(--ink)]">${formatRupiah(monthlyTotal)}/bulan</b> agar selesai tepat waktu.`;
 
     // Monthly
-    const totalMonthly = state.monthly.rafly + state.monthly.salfa;
+    const raflyMon = state.monthly ? (state.monthly.rafly || 0) : 0;
+    const salfaMon = state.monthly ? (state.monthly.salfa || 0) : 0;
+    const totalMonthly = raflyMon + salfaMon;
     document.getElementById('totalMonthlySaved').textContent = formatRupiah(totalMonthly);
-    document.getElementById('raflyMonthlyText').textContent = formatRupiah(state.monthly.rafly);
-    document.getElementById('salfaMonthlyText').textContent = formatRupiah(state.monthly.salfa);
+    document.getElementById('raflyMonthlyText').textContent = formatRupiah(raflyMon);
+    document.getElementById('salfaMonthlyText').textContent = formatRupiah(salfaMon);
+    
+    const maxMon = Math.max(1, totalMonthly);
+    document.getElementById('raflyMonthlyBar').style.width = `${(raflyMon / maxMon) * 100}%`;
+    document.getElementById('salfaMonthlyBar').style.width = `${(salfaMon / maxMon) * 100}%`;
 
     // Activities
     const feedEl = document.getElementById('activityList');
-    feedEl.innerHTML = state.activities.length === 0 
+    const activities = state.activities || [];
+    feedEl.innerHTML = activities.length === 0 
       ? `<li class="py-6 text-center text-sm text-[var(--taupe)]">Belum ada aktivitas.</li>`
-      : state.activities.map(act => {
+      : activities.map(act => {
           const isTarik = act.type === 'tarik';
           return `
             <li class="flex items-center justify-between py-3.5 fade-in">
@@ -434,9 +469,10 @@
 
     // Wishlist
     const listEl = document.getElementById('wishlistList');
-    listEl.innerHTML = state.wishlist.length === 0
+    const wishlist = state.wishlist || [];
+    listEl.innerHTML = wishlist.length === 0
       ? `<p class="text-sm text-[var(--taupe)] text-center py-4">Belum ada wishlist.</p>`
-      : state.wishlist.map(w => {
+      : wishlist.map(w => {
           const isEnough = totalNabung >= w.price;
           return `
             <div class="p-4 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between">
@@ -462,80 +498,99 @@
   // API Call Handlers
   async function handleTargetSubmit(e) {
     e.preventDefault();
-    const goal = parseInt(document.getElementById('modalTargetAmount').value, 10);
+    const goal = parseInt(document.getElementById('modalTargetAmount').value, 10) || 0;
     const deadline = document.getElementById('modalTargetDeadline').value;
-    const res = await fetch(`${API_URL}/target`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goal, deadline })
-    });
-    state = await res.json();
-    renderData();
+    
+    if (!state.nabung) state.nabung = {};
+    state.nabung.goal = goal;
+    if (deadline) state.nabung.deadline = deadline;
+    
+    await saveStateToServer();
     closeTargetModal();
   }
 
   async function handleTransSubmit(e) {
     e.preventDefault();
     const user = document.getElementById('modalTransUser').value;
-    const amount = parseInt(document.getElementById('modalTransAmount').value, 10);
-    const res = await fetch(`${API_URL}/transaction`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: activeTransType, user, amount })
-    });
-    if (res.ok) {
-      state = await res.json();
-      renderData();
-      closeTransModal();
+    const userKey = user.toLowerCase();
+    const amount = parseInt(document.getElementById('modalTransAmount').value, 10) || 0;
+    
+    if (!state.nabung) state.nabung = { goal: 10000000, rafly: 0, salfa: 0, deadline: '2026-12-31' };
+    if (!state.monthly) state.monthly = { rafly: 0, salfa: 0 };
+    if (!state.activities) state.activities = [];
+
+    if (activeTransType === 'setor') {
+      state.nabung[userKey] = (state.nabung[userKey] || 0) + amount;
+      state.monthly[userKey] = (state.monthly[userKey] || 0) + amount;
     } else {
-      const err = await res.json();
-      alert(err.detail);
+      if ((state.nabung[userKey] || 0) < amount) {
+        alert("Saldo tabungan penabung tidak mencukupi!");
+        return;
+      }
+      state.nabung[userKey] = Math.max(0, (state.nabung[userKey] || 0) - amount);
+      state.monthly[userKey] = Math.max(0, (state.monthly[userKey] || 0) - amount);
     }
+
+    const now = new Date();
+    const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ', ' + 
+                    now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    state.activities.unshift({
+      id: Date.now(),
+      user: user,
+      type: activeTransType,
+      amount: amount,
+      time: timeStr
+    });
+
+    await saveStateToServer();
+    closeTransModal();
   }
 
   async function handleWishlistSubmit(e) {
     e.preventDefault();
     const name = document.getElementById('modalWishlistName').value.trim();
-    const price = parseInt(document.getElementById('modalWishlistPrice').value, 10);
-    const res = await fetch(`${API_URL}/wishlist`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, price })
-    });
-    state = await res.json();
-    renderData();
+    const price = parseInt(document.getElementById('modalWishlistPrice').value, 10) || 0;
+    
+    if (!state.wishlist) state.wishlist = [];
+    state.wishlist.push({ id: Date.now(), name, price });
+    
+    await saveStateToServer();
     closeWishlistModal();
   }
 
   async function deleteWishlist(id) {
     if (confirm('Hapus wishlist ini?')) {
-      const res = await fetch(`${API_URL}/wishlist/${id}`, { method: 'DELETE' });
-      state = await res.json();
-      renderData();
+      state.wishlist = (state.wishlist || []).filter(w => w.id !== id);
+      await saveStateToServer();
     }
   }
 
   async function resetData() {
-    if (confirm('Reset ulang data di server ke 0?')) {
-      const res = await fetch(`${API_URL}/reset`, { method: 'POST' });
-      state = await res.json();
-      renderData();
+    if (confirm('Reset ulang seluruh data di server ke 0?')) {
+      state = {
+        nabung: { goal: 10000000, rafly: 0, salfa: 0, deadline: '2026-12-31' },
+        monthly: { rafly: 0, salfa: 0 },
+        wishlist: [],
+        activities: []
+      };
+      await saveStateToServer();
     }
   }
 
   // UI Helpers
- function openTargetModal() {
-  const goal = (state && state.nabung && state.nabung.goal) ? state.nabung.goal : 10000000;
-  const deadline = (state && state.nabung && state.nabung.deadline) ? state.nabung.deadline : '';
-  
-  const inputAmount = document.getElementById('modalTargetAmount');
-  const inputDeadline = document.getElementById('modalTargetDeadline');
-  const modal = document.getElementById('targetModal');
+  function openTargetModal() {
+    const goal = (state && state.nabung && state.nabung.goal) ? state.nabung.goal : 10000000;
+    const deadline = (state && state.nabung && state.nabung.deadline) ? state.nabung.deadline : '2026-12-31';
+    
+    const inputAmount = document.getElementById('modalTargetAmount');
+    const inputDeadline = document.getElementById('modalTargetDeadline');
+    const modal = document.getElementById('targetModal');
 
-  if (inputAmount) inputAmount.value = goal;
-  if (inputDeadline) inputDeadline.value = deadline;
-  if (modal) modal.classList.remove('hidden');
-}
+    if (inputAmount) inputAmount.value = goal;
+    if (inputDeadline) inputDeadline.value = deadline;
+    if (modal) modal.classList.remove('hidden');
+  }
   function closeTargetModal() { document.getElementById('targetModal').classList.add('hidden'); }
   function openTransModal(type) {
     document.getElementById('modalTransUser').value = currentUser || 'Rafly';
