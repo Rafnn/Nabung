@@ -15,7 +15,7 @@ app.add_middleware(
 )
 
 # Password aplikasi
-APP_PASSWORD = os.getenv("APP_PASSWORD", "duosave123").strip()
+APP_PASSWORD = os.getenv("APP_PASSWORD", "duosave2109").strip()
 
 # Inisialisasi Supabase secara aman
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
